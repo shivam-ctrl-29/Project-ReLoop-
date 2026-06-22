@@ -1,32 +1,38 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { Droplets, IndianRupee, Wind, ShieldCheck, Truck, FileDown, History } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import TopBar from '../../components/TopBar';
 import StatCard from '../../components/StatCard';
 import AlertBanner from '../../components/AlertBanner';
 
-const pickups = [
-  { date: '18 Jun', qty: '120 L', status: 'Collected', statusColor: '#1B5E20', statusBg: '#F1F8F0', action: 'Certificate', actionColor: '#1B5E20' },
-  { date: '24 Jun', qty: '80 L',  status: 'Scheduled', statusColor: '#F59E0B', statusBg: '#FDF3E3', action: 'Details',     actionColor: '#2196F3' },
-  { date: '30 Jun', qty: '—',     status: 'Requested', statusColor: '#2196F3', statusBg: '#E8F2FC', action: 'Cancel',      actionColor: '#DC2626' },
-];
-
-const chartData = [
-  { month: 'JAN', val: 310 },
-  { month: 'FEB', val: 275 },
-  { month: 'MAR', val: 340 },
-  { month: 'APR', val: 290 },
-  { month: 'MAY', val: 320 },
-  { month: 'JUN', val: 340 },
-];
+const statusColors: Record<string, { color: string; bg: string }> = {
+  collected: { color: '#1B5E20', bg: '#F1F8F0' },
+  scheduled:  { color: '#F59E0B', bg: '#FDF3E3' },
+  requested:  { color: '#2196F3', bg: '#E8F2FC' },
+  confirmed:  { color: '#1B5E20', bg: '#F1F8F0' },
+};
 
 const quickActions = [
-  { icon: Truck,    label: 'Schedule a Pickup',    sub: "We'll collect your used oil" },
-  { icon: FileDown, label: 'Download Certificate',  sub: 'For FSSAI records' },
-  { icon: History,  label: 'Collection History',    sub: 'All past pickups' },
+  { icon: Truck,    label: 'Schedule a Pickup',   sub: "We'll collect your used oil" },
+  { icon: FileDown, label: 'Download Certificate', sub: 'For FSSAI records' },
+  { icon: History,  label: 'Collection History',   sub: 'All past pickups' },
 ];
 
 export default function DashboardPage() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/dashboard')
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); });
+  }, []);
+
+  const s = data?.stats || {};
+  const pickups = data?.pickups || [];
+  const chart = data?.chart || [];
+
   return (
     <div>
       <TopBar title="Dashboard" date="June 2026" />
@@ -35,53 +41,54 @@ export default function DashboardPage() {
         action="Check Schedule"
       />
 
-      {/* Stat Cards */}
       <div className="flex gap-4 mb-6">
-        <StatCard label="Oil Collected This Month" value="340" unit="kg" change="+12%" changeType="up" icon={Droplets} color="green" />
-        <StatCard label="Earnings from Oil" value="₹14,200" change="+8%" changeType="up" icon={IndianRupee} color="amber" />
-        <StatCard label="CO2 Saved" value="2.4" unit="T" change="Stable" changeType="stable" icon={Wind} color="blue" />
-        <StatCard label="Compliance Docs Ready" value="3" change="Updated" changeType="info" icon={ShieldCheck} color="green" />
+        <StatCard label="Oil Collected This Month" value={loading ? '—' : `${Number(s.oil_kg || 0).toFixed(0)}`} unit="L" change="+12%" changeType="up" icon={Droplets} color="green" />
+        <StatCard label="Earnings from Oil" value={loading ? '—' : `₹${Number(s.earnings || 0).toLocaleString('en-IN')}`} change="+8%" changeType="up" icon={IndianRupee} color="amber" />
+        <StatCard label="CO2 Saved" value={loading ? '—' : `${Number(s.co2 || 0).toFixed(1)}`} unit="T" change="Stable" changeType="stable" icon={Wind} color="blue" />
+        <StatCard label="Compliance Docs Ready" value={loading ? '—' : String(s.docs || 0)} change="Updated" changeType="info" icon={ShieldCheck} color="green" />
       </div>
 
-      {/* Pickups + Quick Actions */}
       <div className="flex gap-5 mb-6">
-        {/* Pickups Table */}
         <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-base" style={{ color: '#1F2A24' }}>MY PICKUPS</h3>
             <button className="text-sm font-medium" style={{ color: '#1B5E20' }}>View All</button>
           </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left pb-3 font-medium" style={{ color: '#5B6B63' }}>Date</th>
-                <th className="text-left pb-3 font-medium" style={{ color: '#5B6B63' }}>Quantity</th>
-                <th className="text-left pb-3 font-medium" style={{ color: '#5B6B63' }}>Status</th>
-                <th className="text-left pb-3 font-medium" style={{ color: '#5B6B63' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pickups.map((p, i) => (
-                <tr key={i} className="border-b border-gray-50">
-                  <td className="py-3.5" style={{ color: '#1F2A24' }}>{p.date}</td>
-                  <td className="py-3.5" style={{ color: '#1F2A24' }}>{p.qty}</td>
-                  <td className="py-3.5">
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ color: p.statusColor, background: p.statusBg }}>
-                      {p.status}
-                    </span>
-                  </td>
-                  <td className="py-3.5">
-                    <button className="text-xs font-semibold" style={{ color: p.actionColor }}>
-                      {p.action}
-                    </button>
-                  </td>
+          {loading ? (
+            <div className="text-sm text-gray-400 py-4 text-center">Loading...</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {['Date', 'Quantity', 'Status', 'Action'].map(h => (
+                    <th key={h} className="text-left pb-3 font-medium" style={{ color: '#5B6B63' }}>{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pickups.slice(0, 3).map((p: any, i: number) => {
+                  const sc = statusColors[p.status] || { color: '#5B6B63', bg: '#F5F5F5' };
+                  const dateStr = new Date(p.scheduled_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                  return (
+                    <tr key={i} className="border-b border-gray-50">
+                      <td className="py-3.5" style={{ color: '#1F2A24' }}>{dateStr}</td>
+                      <td className="py-3.5" style={{ color: '#1F2A24' }}>{p.quantity || '—'}</td>
+                      <td className="py-3.5">
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize" style={{ color: sc.color, background: sc.bg }}>{p.status}</span>
+                      </td>
+                      <td className="py-3.5">
+                        {p.status === 'collected' && <button className="text-xs font-semibold" style={{ color: '#1B5E20' }}>Certificate</button>}
+                        {p.status === 'scheduled' && <button className="text-xs font-semibold" style={{ color: '#2196F3' }}>Details</button>}
+                        {p.status === 'requested' && <button className="text-xs font-semibold" style={{ color: '#DC2626' }}>Cancel</button>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
 
-        {/* Quick Actions */}
         <div className="w-72 bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <h3 className="font-bold text-sm mb-4" style={{ color: '#1F2A24' }}>WHAT DO YOU WANT TO DO?</h3>
           <div className="space-y-3">
@@ -100,7 +107,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Bar Chart */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-base" style={{ color: '#1F2A24' }}>OIL COLLECTED (LITRES) — 2026</h3>
@@ -110,10 +116,10 @@ export default function DashboardPage() {
           </div>
         </div>
         <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={chartData} barCategoryGap="30%">
+          <BarChart data={chart} barCategoryGap="30%">
             <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" vertical={false} />
             <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#5B6B63', fontSize: 12 }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#5B6B63', fontSize: 12 }} tickFormatter={v => `${v}L`} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#5B6B63', fontSize: 12 }} tickFormatter={(v: number) => `${v}L`} />
             <Tooltip formatter={(v: number) => [`${v} L`, 'Collected']} contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB' }} />
             <Bar dataKey="val" fill="#1B5E20" radius={[6, 6, 0, 0]} />
           </BarChart>
