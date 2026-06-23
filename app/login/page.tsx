@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { Recycle, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 const demoAccounts = [
-  { label: 'Institution Admin', email: 'admin@symbiosis.edu.in', role: 'Admin' },
-  { label: 'Department Head',   email: 'suraj@symbiosis.edu.in', role: 'Dept Head' },
-  { label: 'Verified Buyer',    email: 'buyer@greenfuel.in',     role: 'Buyer' },
+  { label: 'Admin (Shivam)',  email: 'mathurshivv@gmail.com', role: 'Admin' },
+  { label: 'Buyer (Nick)',    email: 'nicksaysv@gmail.com',   role: 'Buyer' },
+  { label: 'Dept Head',       email: 'suraj@symbiosis.edu.in',role: 'Dept Head' },
 ];
 
 export default function LoginPage() {

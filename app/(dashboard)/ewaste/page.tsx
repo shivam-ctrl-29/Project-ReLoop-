@@ -4,6 +4,7 @@ import { Plus, Cpu, IndianRupee, PackageCheck, Recycle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import TopBar from '../../components/TopBar';
 import StatCard from '../../components/StatCard';
+import { useUser } from '@/lib/useUser';
 
 const statusColors: Record<string, { color: string; bg: string }> = {
   listed:   { color: '#1B5E20', bg: '#F1F8F0' },
@@ -16,6 +17,8 @@ const triageColors: Record<string, string> = {
 };
 
 export default function EWastePage() {
+  const user = useUser();
+  const canList = user?.role === 'admin' || user?.role === 'dept_head' || user?.role === 'recycler';
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -53,11 +56,13 @@ export default function EWastePage() {
       <div className="flex gap-5 mb-6">
         <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-base" style={{ color: '#1F2A24' }}>MY E-WASTE LISTINGS</h3>
-            <button onClick={() => setShowForm(v => !v)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#1B5E20' }}>
-              <Plus size={15} /> List Item
-            </button>
+            <h3 className="font-bold text-base" style={{ color: '#1F2A24' }}>{canList ? 'MY E-WASTE LISTINGS' : 'AVAILABLE E-WASTE'}</h3>
+            {canList && (
+              <button onClick={() => setShowForm(v => !v)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#1B5E20' }}>
+                <Plus size={15} /> List Item
+              </button>
+            )}
           </div>
 
           {showForm && (

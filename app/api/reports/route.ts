@@ -1,28 +1,33 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { getUserFromToken } from '@/lib/auth';
 
 export async function GET() {
+  const authUser = await getUserFromToken();
+  const userId = authUser?.id ?? 1;
   const client = await pool.connect();
   try {
+    const institutionRes = await client.query('SELECT institution_id FROM users WHERE id = $1', [userId]);
+    const institutionId = institutionRes.rows[0]?.institution_id ?? 1;
+
     const [monthly, totals, depts] = await Promise.all([
       client.query(`
         SELECT TO_CHAR(recorded_month, 'Mon') AS month,
-               co2_saved_tons AS co2,
-               water_saved_liters AS water,
+               co2_saved_tons AS co2_saved, water_saved_liters AS water_saved,
                revenue_oil + revenue_ewaste AS revenue,
-               revenue_oil AS oil,
-               revenue_ewaste AS ewaste
-        FROM impact_records WHERE institution_id = 1
+               oil_collected_liters AS oil_collected, ewaste_items
+        FROM impact_records WHERE institution_id = $1
         ORDER BY recorded_month ASC
-      `),
+      `, [institutionId]),
       client.query(`
         SELECT
-          SUM(co2_saved_tons) AS total_co2,
-          SUM(water_saved_liters) AS total_water,
-          SUM(revenue_oil + revenue_ewaste) AS total_revenue,
-          SUM(oil_collected_liters + ewaste_items * 5) AS total_items
-        FROM impact_records WHERE institution_id = 1
-      `),
+          COALESCE(SUM(co2_saved_tons),0) AS total_co2,
+          COALESCE(SUM(water_saved_liters),0) AS total_water,
+          COALESCE(SUM(revenue_oil + revenue_ewaste),0) AS total_revenue,
+          COALESCE(SUM(oil_collected_liters),0) AS total_oil,
+          COALESCE(SUM(ewaste_items),0) AS total_items
+        FROM impact_records WHERE institution_id = $1
+      `, [institutionId]),
       client.query(`
         SELECT u.department,
                COALESCE(SUM(oil.quantity_liters),0) AS oil,
@@ -30,11 +35,9 @@ export async function GET() {
         FROM users u
         LEFT JOIN oil_listings oil ON oil.user_id = u.id
         LEFT JOIN ewaste_listings ew ON ew.user_id = u.id
-        WHERE u.institution_id = 1
-        GROUP BY u.department
-        ORDER BY oil DESC
-        LIMIT 5
-      `),
+        WHERE u.institution_id = $1
+        GROUP BY u.department ORDER BY oil DESC LIMIT 5
+      `, [institutionId]),
     ]);
     return NextResponse.json({ monthly: monthly.rows, totals: totals.rows[0], depts: depts.rows });
   } finally {

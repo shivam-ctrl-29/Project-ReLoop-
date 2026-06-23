@@ -8,10 +8,9 @@ import {
 } from 'lucide-react';
 
 const roles = [
-  { value: 'admin',     label: 'Institution Admin',  desc: 'Manage all modules & reports' },
-  { value: 'dept_head', label: 'Department Head',    desc: 'List resources & schedule pickups' },
-  { value: 'buyer',     label: 'Verified Buyer',     desc: 'Browse & bid on listings' },
-  { value: 'recycler',  label: 'Recycler Partner',   desc: 'Handle e-waste collections' },
+  { value: 'buyer',     label: 'Verified Buyer',    desc: 'Browse & bid on oil/e-waste listings' },
+  { value: 'dept_head', label: 'Resource Seller',   desc: 'List oil & e-waste, manage pickups' },
+  { value: 'recycler',  label: 'Recycler Partner',  desc: 'Handle e-waste collections & pickups' },
 ];
 
 const departments = [
@@ -157,7 +156,7 @@ export default function SignupPage() {
           <div className="space-y-4">
             {[
               { n: 1, label: 'Personal Details',  desc: 'Your name, email & phone' },
-              { n: 2, label: 'Role & Institution', desc: 'How you'll use ReLoop' },
+              { n: 2, label: 'Role & Institution', desc: 'How you will use ReLoop' },
               { n: 3, label: 'Set Password',       desc: 'Secure your account' },
             ].map(({ n, label, desc }) => (
               <div key={n} className={`flex items-center gap-4 transition-opacity ${step >= n ? 'opacity-100' : 'opacity-40'}`}>
