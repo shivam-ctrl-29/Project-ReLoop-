@@ -10,6 +10,8 @@ const demoAccounts = [
   { label: 'Dept Head',       email: 'suraj@symbiosis.edu.in',role: 'Dept Head' },
 ];
 
+// Demo password only for hackathon judging — remove before production
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail]       = useState('');
@@ -185,9 +187,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-xs text-center mt-6" style={{ color: '#9CA3AF' }}>
-            Demo password for all accounts: <span className="font-mono font-semibold">password123</span>
-          </p>
+
         </div>
       </div>
     </div>

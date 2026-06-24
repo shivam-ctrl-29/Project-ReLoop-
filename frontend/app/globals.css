@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F5F7F5;
+  --foreground: #1F2A24;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', 'Calibri', ui-sans-serif, sans-serif;
+}
+
+h1, h2, h3, h4, h5 {
+  font-family: 'Georgia', 'Cambria', ui-serif, serif;
+}
