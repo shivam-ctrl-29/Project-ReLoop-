@@ -21,12 +21,25 @@ const statusColors: Record<string, { color: string; bg: string }> = {
 
 // ── Admin / Dept Head Dashboard ──────────────────────────────────────────────
 function AdminDashboard() {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData]           = useState<any>(null);
+  const [loading, setLoading]     = useState(true);
+  const [cancelling, setCancelling] = useState<number | null>(null);
 
-  useEffect(() => {
+  const load = () =>
     fetch('/api/dashboard').then(r => r.json()).then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
-  }, []);
+
+  useEffect(() => { load(); }, []);
+
+  const cancelPickup = async (id: number) => {
+    setCancelling(id);
+    await fetch('/api/pickups', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status: 'cancelled' }),
+    });
+    setCancelling(null);
+    load();
+  };
 
   const s = data?.stats || {};
   const pickups = data?.pickups || [];
@@ -80,9 +93,25 @@ function AdminDashboard() {
                         <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize" style={{ color: sc.color, background: sc.bg }}>{p.status}</span>
                       </td>
                       <td className="py-3.5">
-                        {p.status === 'collected' && <button className="text-xs font-semibold" style={{ color: '#1B5E20' }}>Certificate</button>}
-                        {p.status === 'scheduled' && <button className="text-xs font-semibold" style={{ color: '#2196F3' }}>Details</button>}
-                        {p.status === 'requested' && <button className="text-xs font-semibold" style={{ color: '#DC2626' }}>Cancel</button>}
+                        {p.status === 'collected' && (
+                          <Link href="/compliance" className="text-xs font-semibold" style={{ color: '#1B5E20' }}>
+                            Certificate →
+                          </Link>
+                        )}
+                        {(p.status === 'scheduled' || p.status === 'confirmed') && (
+                          <Link href="/schedule" className="text-xs font-semibold" style={{ color: '#2196F3' }}>
+                            Details →
+                          </Link>
+                        )}
+                        {p.status === 'requested' && (
+                          <button
+                            onClick={() => cancelPickup(p.id)}
+                            disabled={cancelling === p.id}
+                            className="text-xs font-semibold disabled:opacity-50"
+                            style={{ color: '#DC2626' }}>
+                            {cancelling === p.id ? 'Cancelling…' : 'Cancel'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
