@@ -154,10 +154,11 @@ export default function AdminPanel() {
       )}
 
       <div className="flex gap-4 mb-6">
-        <StatCard label="Total Users"    value={String(stats.total     || 0)} change="Registered" changeType="info" icon={Users}     color="green" />
-        <StatCard label="Admins"         value={String(stats.admins    || 0)} change="Full access" changeType="info" icon={ShieldCheck} color="green" />
-        <StatCard label="Dept Heads"     value={String(stats.dept_heads|| 0)} change="Can list resources" changeType="info" icon={UserCheck}  color="blue"  />
-        <StatCard label="Buyers"         value={String(stats.buyers    || 0)} change="Marketplace access" changeType="info" icon={ShoppingBag} color="amber" />
+        <StatCard label="Total Users"    value={String(stats.total      || 0)} change="Registered"        changeType="info" icon={Users}      color="green" />
+        <StatCard label="Admins"         value={String(stats.admins     || 0)} change="Full access"        changeType="info" icon={ShieldCheck} color="green" />
+        <StatCard label="Dept Heads"     value={String(stats.dept_heads || 0)} change="Can list resources" changeType="info" icon={UserCheck}   color="blue"  />
+        <StatCard label="Buyers"         value={String(stats.buyers     || 0)} change="Marketplace access" changeType="info" icon={ShoppingBag} color="amber" />
+        <StatCard label="Recyclers"      value={String(stats.recyclers  || 0)} change="Partner recyclers"  changeType="info" icon={Recycle}     color="blue"  />
       </div>
 
       {/* ── Driver Verification Modal ── */}
