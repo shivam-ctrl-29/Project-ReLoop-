@@ -19,7 +19,8 @@ const triageColors: Record<string, string> = {
 export default function EWastePage() {
   const user = useUser();
   const canList = user?.role === 'admin' || user?.role === 'dept_head' || user?.role === 'recycler';
-  const isBuyer = user?.role === 'buyer' || user?.role === 'recycler';
+  const isBuyer = user?.role === 'buyer';
+  const isRecycler = user?.role === 'recycler';
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -149,53 +150,76 @@ export default function EWastePage() {
           </div>
 
           {showForm && (
-            <form onSubmit={handleSubmit} className="mb-5 p-4 rounded-xl border border-gray-100 bg-gray-50 grid grid-cols-3 gap-3">
-              <div className="col-span-2">
-                <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>Item Name</label>
-                <input required value={form.item_name} onChange={e => setForm(f => ({ ...f, item_name: e.target.value }))}
-                  placeholder="e.g. Dell Laptop 2019" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
+            <form onSubmit={handleSubmit} className="mb-5 p-4 rounded-xl border border-gray-100 bg-gray-50 space-y-3">
+              {/* AI auto-fill banner for recyclers */}
+              {(canList || isRecycler) && estResult && (
+                <div className="flex items-center justify-between p-3 rounded-xl border border-green-200" style={{ background: '#F1F8F0' }}>
+                  <div className="text-xs" style={{ color: '#1B5E20' }}>
+                    <span className="font-bold">AI Estimate ready</span> — Triage: <span className="capitalize font-semibold">{estResult.triage}</span> · ₹{estResult.min.toLocaleString('en-IN')}–₹{estResult.max.toLocaleString('en-IN')}
+                  </div>
+                  <button type="button" onClick={() => setForm(f => ({
+                    ...f,
+                    ai_triage: estResult.triage,
+                    ai_price_min: String(estResult.min),
+                    ai_price_max: String(estResult.max),
+                    category: estCat,
+                    condition: estCond,
+                    brand: estBrand,
+                  }))}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white flex-shrink-0 ml-3"
+                    style={{ background: '#1B5E20' }}>
+                    <Sparkles size={11} className="inline mr-1" />Use AI Values
+                  </button>
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>Item Name</label>
+                  <input required value={form.item_name} onChange={e => setForm(f => ({ ...f, item_name: e.target.value }))}
+                    placeholder="e.g. Dell Laptop 2019" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>Category</label>
+                  <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white">
+                    <option value="laptop">Laptop</option><option value="mobile">Mobile</option>
+                    <option value="monitor">Monitor</option><option value="battery">Battery</option>
+                    <option value="accessories">Accessories</option><option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>Brand</label>
+                  <input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}
+                    placeholder="e.g. Dell" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>Condition</label>
+                  <select value={form.condition} onChange={e => setForm(f => ({ ...f, condition: e.target.value }))}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white">
+                    <option value="working">Working</option><option value="repairable">Repairable</option>
+                    <option value="dead">Dead</option><option value="mixed">Mixed</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>AI Triage</label>
+                  <select value={form.ai_triage} onChange={e => setForm(f => ({ ...f, ai_triage: e.target.value }))}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white">
+                    <option value="resell">Resell</option><option value="repair">Repair</option>
+                    <option value="recycle">Recycle</option><option value="donate">Donate</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>Min Price (₹)</label>
+                  <input type="number" value={form.ai_price_min} onChange={e => setForm(f => ({ ...f, ai_price_min: e.target.value }))}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>Max Price (₹)</label>
+                  <input type="number" value={form.ai_price_max} onChange={e => setForm(f => ({ ...f, ai_price_max: e.target.value }))}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
+                </div>
               </div>
-              <div>
-                <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>Category</label>
-                <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white">
-                  <option value="laptop">Laptop</option><option value="mobile">Mobile</option>
-                  <option value="monitor">Monitor</option><option value="battery">Battery</option>
-                  <option value="accessories">Accessories</option><option value="other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>Brand</label>
-                <input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}
-                  placeholder="e.g. Dell" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
-              </div>
-              <div>
-                <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>Condition</label>
-                <select value={form.condition} onChange={e => setForm(f => ({ ...f, condition: e.target.value }))}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white">
-                  <option value="working">Working</option><option value="repairable">Repairable</option>
-                  <option value="dead">Dead</option><option value="mixed">Mixed</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>AI Triage</label>
-                <select value={form.ai_triage} onChange={e => setForm(f => ({ ...f, ai_triage: e.target.value }))}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white">
-                  <option value="resell">Resell</option><option value="repair">Repair</option>
-                  <option value="recycle">Recycle</option><option value="donate">Donate</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>Min Price (₹)</label>
-                <input type="number" value={form.ai_price_min} onChange={e => setForm(f => ({ ...f, ai_price_min: e.target.value }))}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
-              </div>
-              <div>
-                <label className="text-xs font-medium block mb-1" style={{ color: '#5B6B63' }}>Max Price (₹)</label>
-                <input type="number" value={form.ai_price_max} onChange={e => setForm(f => ({ ...f, ai_price_max: e.target.value }))}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
-              </div>
-              <div className="col-span-3 flex gap-2">
+              <div className="flex gap-2">
                 <button type="submit" disabled={saving}
                   className="px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#1B5E20' }}>
                   {saving ? 'Saving...' : 'Add Item'}

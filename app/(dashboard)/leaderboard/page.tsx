@@ -17,15 +17,17 @@ const RANK_ICON = [
 ];
 
 export default function LeaderboardPage() {
-  const [users, setUsers]   = useState<any[]>([]);
+  const [users, setUsers]     = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     fetch('/api/leaderboard').then(r => r.json()).then(d => { setUsers(d); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
-  const topThree = users.slice(0, 3);
-  const rest     = users.slice(3);
+  const topThree   = users.slice(0, 3);
+  const rest       = users.slice(3);
+  const tableUsers = showAll ? users : users.slice(0, 5);
 
   return (
     <div>
@@ -67,7 +69,16 @@ export default function LeaderboardPage() {
 
           {/* Full table */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <h3 className="font-bold text-base mb-4" style={{ color: '#1F2A24' }}>ALL CONTRIBUTORS</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-base" style={{ color: '#1F2A24' }}>ALL CONTRIBUTORS</h3>
+              {users.length > 5 && (
+                <button onClick={() => setShowAll(v => !v)}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+                  style={{ color: '#1B5E20' }}>
+                  {showAll ? `Show Top 5` : `Show All (${users.length})`}
+                </button>
+              )}
+            </div>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
@@ -77,7 +88,7 @@ export default function LeaderboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u: any, i: number) => {
+                {tableUsers.map((u: any, i: number) => {
                   const meta = ROLE_META[u.role] || ROLE_META.admin;
                   return (
                     <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
@@ -128,6 +139,13 @@ export default function LeaderboardPage() {
                 })}
               </tbody>
             </table>
+            {!showAll && users.length > 5 && (
+              <button onClick={() => setShowAll(true)}
+                className="w-full mt-3 py-2 text-xs font-semibold rounded-xl border border-dashed border-gray-200 hover:bg-gray-50 transition-colors"
+                style={{ color: '#5B6B63' }}>
+                + {users.length - 5} more contributors — Show All
+              </button>
+            )}
           </div>
         </>
       )}

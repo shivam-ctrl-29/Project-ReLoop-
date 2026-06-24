@@ -9,21 +9,24 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 export default function SettingsPage() {
-  const [profile, setProfile] = useState<any>(null);
-  const [name, setName]       = useState('');
-  const [dept, setDept]       = useState('');
-  const [curPwd, setCurPwd]   = useState('');
-  const [newPwd, setNewPwd]   = useState('');
-  const [confPwd, setConfPwd] = useState('');
-  const [saving, setSaving]   = useState(false);
+  const [profile, setProfile]   = useState<any>(null);
+  const [name, setName]         = useState('');
+  const [dept, setDept]         = useState('');
+  const [institution, setInstitution] = useState('');
+  const [curPwd, setCurPwd]     = useState('');
+  const [newPwd, setNewPwd]     = useState('');
+  const [confPwd, setConfPwd]   = useState('');
+  const [saving, setSaving]     = useState(false);
   const [pwdSaving, setPwdSaving] = useState(false);
-  const [toast, setToast]     = useState<{ msg: string; ok: boolean } | null>(null);
+  const [toast, setToast]       = useState<{ msg: string; ok: boolean } | null>(null);
 
   useEffect(() => {
     fetch('/api/settings').then(r => r.json()).then(d => {
-      setProfile(d); setName(d.name || ''); setDept(d.department || '');
+      setProfile(d); setName(d.name || ''); setDept(d.department || ''); setInstitution(d.institution || '');
     });
   }, []);
+
+  const canEditInstitution = profile?.role === 'admin' || profile?.role === 'dept_head';
 
   const showToast = (msg: string, ok: boolean) => {
     setToast({ msg, ok });
@@ -35,7 +38,7 @@ export default function SettingsPage() {
     const res = await fetch('/api/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, department: dept }),
+      body: JSON.stringify({ name, department: dept, ...(canEditInstitution && { institution_name: institution }) }),
     });
     setSaving(false);
     if (res.ok) {
@@ -133,11 +136,23 @@ export default function SettingsPage() {
                     style={{ color: '#1F2A24' }} />
                 </div>
                 <div>
-                  <label className="text-xs font-medium block mb-1.5" style={{ color: '#5B6B63' }}>Institution</label>
-                  <div className="flex items-center gap-2 border border-gray-100 rounded-xl px-4 py-2.5 bg-gray-50">
-                    <Building2 size={13} style={{ color: '#9CA3AF' }} />
-                    <span className="text-sm truncate" style={{ color: '#9CA3AF' }}>{profile.institution || 'N/A'}</span>
-                  </div>
+                  <label className="text-xs font-medium block mb-1.5" style={{ color: '#5B6B63' }}>
+                    Institution {canEditInstitution && <span className="font-normal" style={{ color: '#2196F3' }}>(editable)</span>}
+                  </label>
+                  {canEditInstitution ? (
+                    <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-4 py-2.5 focus-within:border-green-500 transition-colors">
+                      <Building2 size={13} style={{ color: '#5B6B63' }} />
+                      <input value={institution} onChange={e => setInstitution(e.target.value)}
+                        className="flex-1 text-sm outline-none bg-transparent"
+                        style={{ color: '#1F2A24' }} />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 border border-gray-100 rounded-xl px-4 py-2.5 bg-gray-50">
+                      <Building2 size={13} style={{ color: '#9CA3AF' }} />
+                      <span className="text-sm truncate" style={{ color: '#9CA3AF' }}>{profile.institution || 'N/A'}</span>
+                    </div>
+                  )}
+                  {!canEditInstitution && <p className="text-xs mt-1" style={{ color: '#9CA3AF' }}>Only Admin or Dept Head can edit institution name</p>}
                 </div>
               </div>
               <button onClick={saveProfile} disabled={saving}

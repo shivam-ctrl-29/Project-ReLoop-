@@ -24,7 +24,7 @@ export async function PATCH(req: NextRequest) {
   const authUser = await getUserFromToken();
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await req.json();
-  const { name, department, currentPassword, newPassword } = body;
+  const { name, department, currentPassword, newPassword, institution_name } = body;
   const client = await pool.connect();
   try {
     if (newPassword) {
@@ -38,6 +38,13 @@ export async function PATCH(req: NextRequest) {
       await client.query(
         'UPDATE users SET name = COALESCE($1, name), department = COALESCE($2, department) WHERE id = $3',
         [name || null, department ?? null, authUser.id]
+      );
+    }
+    if (institution_name && ['admin', 'dept_head'].includes(authUser.role)) {
+      await client.query(
+        `UPDATE institutions SET name = $1
+         WHERE id = (SELECT institution_id FROM users WHERE id = $2)`,
+        [institution_name, authUser.id]
       );
     }
     return NextResponse.json({ ok: true });
