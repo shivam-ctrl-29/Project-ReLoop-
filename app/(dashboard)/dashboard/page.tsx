@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react';
 import {
   Droplets, IndianRupee, Wind, ShieldCheck, Truck, FileDown,
-  History, Search, Recycle, Cpu, ArrowRight, Package, Clock, CheckCircle
+  History, Search, Recycle, Cpu, ArrowRight, Package, Clock, CheckCircle,
+  CheckCircle2, XCircle, AlertCircle, Users
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import TopBar from '../../components/TopBar';
@@ -404,11 +405,173 @@ function RecyclerDashboard() {
   );
 }
 
+// ── Dept Head Dashboard ──────────────────────────────────────────────────────
+function DeptHeadDashboard() {
+  const [pickups, setPickups] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<number | null>(null);
+
+  const load = () =>
+    fetch('/api/pickups').then(r => r.json())
+      .then(d => { setPickups(Array.isArray(d?.pickups) ? d.pickups : []); setLoading(false); })
+      .catch(() => setLoading(false));
+
+  useEffect(() => { load(); }, []);
+
+  const approve = async (id: number) => {
+    setUpdating(id);
+    await fetch('/api/pickups', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'confirmed' }) });
+    setUpdating(null); load();
+  };
+
+  const reject = async (id: number) => {
+    setUpdating(id);
+    await fetch('/api/pickups', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'cancelled' }) });
+    setUpdating(null); load();
+  };
+
+  const pending   = pickups.filter(p => p.status === 'requested');
+  const active    = pickups.filter(p => ['scheduled', 'confirmed'].includes(p.status));
+  const completed = pickups.filter(p => ['collected', 'cancelled'].includes(p.status));
+
+  const statusBadge: Record<string, { color: string; bg: string; label: string }> = {
+    requested: { color: '#D97706', bg: '#FDF3E3', label: 'Awaiting Approval' },
+    scheduled:  { color: '#2196F3', bg: '#E8F2FC', label: 'Scheduled' },
+    confirmed:  { color: '#1B5E20', bg: '#F1F8F0', label: 'Confirmed' },
+    collected:  { color: '#5B6B63', bg: '#F5F5F5', label: 'Collected' },
+    cancelled:  { color: '#DC2626', bg: '#FEF2F2', label: 'Cancelled' },
+  };
+
+  const PickupRow = ({ p, showActions }: { p: any; showActions?: boolean }) => {
+    const sb = statusBadge[p.status] || { color: '#5B6B63', bg: '#F5F5F5', label: p.status };
+    const dateStr = new Date(p.scheduled_date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+    return (
+      <div className="flex items-center justify-between px-4 py-3.5 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#F1F8F0' }}>
+            {p.pickup_type === 'ewaste' ? <Package size={15} style={{ color: '#1B5E20' }} /> : <Truck size={15} style={{ color: '#1B5E20' }} />}
+          </div>
+          <div>
+            <div className="text-sm font-semibold" style={{ color: '#1F2A24' }}>
+              {dateStr} · {p.time_slot}
+            </div>
+            <div className="text-xs mt-0.5 capitalize" style={{ color: '#5B6B63' }}>
+              {p.pickup_type} · {p.quantity || '—'} · <span className="font-medium">{p.requester_name || 'Unknown'}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ color: sb.color, background: sb.bg }}>{sb.label}</span>
+          {showActions && (
+            <>
+              <button onClick={() => approve(p.id)} disabled={updating === p.id}
+                className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl text-white disabled:opacity-50"
+                style={{ background: '#1B5E20' }}>
+                {updating === p.id ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={11} />}
+                Approve
+              </button>
+              <button onClick={() => reject(p.id)} disabled={updating === p.id}
+                className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl border border-red-200 disabled:opacity-50"
+                style={{ color: '#DC2626', background: '#FEF2F2' }}>
+                <XCircle size={11} /> Reject
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <TopBar title="Dept Head — Pickup Verification" date="June 2026" />
+
+      {/* Summary */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        {[
+          { label: 'Awaiting Approval', value: pending.length,   color: '#D97706', bg: '#FDF3E3', icon: AlertCircle },
+          { label: 'Active Pickups',    value: active.length,    color: '#2196F3', bg: '#E8F2FC', icon: Truck },
+          { label: 'Completed',         value: completed.filter(p => p.status === 'collected').length, color: '#1B5E20', bg: '#F1F8F0', icon: CheckCircle2 },
+          { label: 'Total Requests',    value: pickups.length,   color: '#5B6B63', bg: '#F5F5F5', icon: Users },
+        ].map(({ label, value, color, bg, icon: Icon }) => (
+          <div key={label} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
+              <Icon size={20} style={{ color }} />
+            </div>
+            <div>
+              <div className="text-2xl font-bold" style={{ color: '#1F2A24' }}>{loading ? '—' : value}</div>
+              <div className="text-xs" style={{ color: '#5B6B63' }}>{label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Pending Approval */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#FDF3E3' }}>
+            <AlertCircle size={16} style={{ color: '#D97706' }} />
+          </div>
+          <h3 className="font-bold text-base" style={{ color: '#1F2A24' }}>PENDING APPROVAL</h3>
+          {pending.length > 0 && (
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ color: '#D97706', background: '#FDF3E3' }}>
+              {pending.length} new
+            </span>
+          )}
+        </div>
+        {loading ? (
+          <div className="text-sm text-gray-400 text-center py-6">Loading...</div>
+        ) : pending.length === 0 ? (
+          <div className="flex items-center gap-3 p-4 rounded-xl text-sm" style={{ background: '#F1F8F0' }}>
+            <CheckCircle2 size={16} style={{ color: '#1B5E20' }} />
+            <span style={{ color: '#1B5E20' }} className="font-medium">All caught up — no pickups awaiting approval</span>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {pending.map(p => <PickupRow key={p.id} p={p} showActions />)}
+          </div>
+        )}
+      </div>
+
+      {/* Active & Scheduled */}
+      {active.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#E8F2FC' }}>
+              <Truck size={16} style={{ color: '#2196F3' }} />
+            </div>
+            <h3 className="font-bold text-base" style={{ color: '#1F2A24' }}>ACTIVE PICKUPS</h3>
+          </div>
+          <div className="space-y-2">
+            {active.map(p => <PickupRow key={p.id} p={p} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Completed History */}
+      {completed.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#F5F5F5' }}>
+              <History size={16} style={{ color: '#5B6B63' }} />
+            </div>
+            <h3 className="font-bold text-base" style={{ color: '#1F2A24' }}>HISTORY</h3>
+          </div>
+          <div className="space-y-2">
+            {completed.slice(0, 10).map(p => <PickupRow key={p.id} p={p} />)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Entry point — picks the right view ──────────────────────────────────────
 export default function DashboardPage() {
   const user = useUser();
   if (!user) return <div className="p-8 text-gray-400 text-sm">Loading...</div>;
-  if (user.role === 'buyer')    return <BuyerDashboard />;
-  if (user.role === 'recycler') return <RecyclerDashboard />;
+  if (user.role === 'buyer')     return <BuyerDashboard />;
+  if (user.role === 'recycler')  return <RecyclerDashboard />;
+  if (user.role === 'dept_head') return <DeptHeadDashboard />;
   return <AdminDashboard />;
 }

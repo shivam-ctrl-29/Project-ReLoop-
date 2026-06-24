@@ -5,8 +5,25 @@ import { getUserFromToken } from '@/lib/auth';
 export async function GET() {
   const authUser = await getUserFromToken();
   const userId = authUser?.id ?? 1;
+  const role = authUser?.role ?? 'buyer';
   const client = await pool.connect();
   try {
+    // dept_head sees all pickups from their institution
+    if (role === 'dept_head') {
+      const instRes = await client.query('SELECT institution_id FROM users WHERE id=$1', [userId]);
+      const institutionId = instRes.rows[0]?.institution_id ?? 1;
+      const result = await client.query(`
+        SELECT p.id, p.pickup_type, p.quantity, p.scheduled_date, p.time_slot,
+               p.status, p.driver_name, p.revenue, p.buyer_name,
+               p.tpc_reading, p.verified_grade, p.verified_quantity, p.driver_note,
+               u.name AS requester_name, u.id AS requester_id
+        FROM pickups p
+        JOIN users u ON u.id = p.user_id
+        WHERE u.institution_id = $1
+        ORDER BY p.scheduled_date DESC
+      `, [institutionId]);
+      return NextResponse.json({ pickups: result.rows });
+    }
     const result = await client.query(`
       SELECT id, pickup_type, quantity, scheduled_date, time_slot,
              status, driver_name, revenue, buyer_name,
@@ -64,11 +81,13 @@ export async function PATCH(req: NextRequest) {
       }
       return NextResponse.json(result.rows[0]);
     }
-    // Normal status update
-    const result = await client.query(
-      `UPDATE pickups SET status=$1 WHERE id=$2 AND user_id=$3 RETURNING *`,
-      [status, id, userId]
-    );
+    // Normal status update — dept_head can update any pickup in their institution
+    const updateQuery = role === 'dept_head'
+      ? `UPDATE pickups SET status=$1 WHERE id=$2
+         AND user_id IN (SELECT id FROM users WHERE institution_id=(SELECT institution_id FROM users WHERE id=$3))
+         RETURNING *`
+      : `UPDATE pickups SET status=$1 WHERE id=$2 AND user_id=$3 RETURNING *`;
+    const result = await client.query(updateQuery, [status, id, userId]);
     return NextResponse.json(result.rows[0]);
   } finally {
     client.release();
