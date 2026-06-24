@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { FileText, ShieldCheck, Download, CheckCircle2, AlertCircle, Clock, Loader2 } from 'lucide-react';
+import { FileText, ShieldCheck, Download, CheckCircle2, AlertCircle, Clock, Loader2, Plus, X, Upload } from 'lucide-react';
 import TopBar from '../../components/TopBar';
 import StatCard from '../../components/StatCard';
 import { jsPDF } from 'jspdf';
@@ -290,15 +290,47 @@ function exportAll(docs: any[], user: any) {
   docs.forEach((doc, i) => setTimeout(() => downloadCert(doc, user), i * 400));
 }
 
+const DOC_TYPES = [
+  { value: 'fssai',       label: 'FSSAI License' },
+  { value: 'ewaste_auth', label: 'E-Waste Authorization (CPCB)' },
+  { value: 'esg_report',  label: 'ESG / CSR Report' },
+  { value: 'cpcb',        label: 'CPCB Certificate' },
+  { value: 'epr',         label: 'EPR Certificate' },
+  { value: 'other',       label: 'Other Document' },
+];
+
 export default function CompliancePage() {
   const user                          = useUser();
   const [data, setData]               = useState<any>(null);
   const [loading, setLoading]         = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [showUpload, setShowUpload]   = useState(false);
+  const [saving, setSaving]           = useState(false);
+  const [uploadDone, setUploadDone]   = useState(false);
+  const [form, setForm]               = useState({
+    doc_name: '', doc_type: 'fssai', issued_date: '', expires_date: '', quantity: '', buyer_name: '',
+  });
 
-  useEffect(() => {
+  const load = () =>
     fetch('/api/compliance').then(r => r.json()).then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
-  }, []);
+
+  useEffect(() => { load(); }, []);
+
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    const res = await fetch('/api/compliance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    });
+    setSaving(false);
+    if (res.ok) {
+      setUploadDone(true);
+      load();
+      setTimeout(() => { setUploadDone(false); setShowUpload(false); setForm({ doc_name: '', doc_type: 'fssai', issued_date: '', expires_date: '', quantity: '', buyer_name: '' }); }, 1800);
+    }
+  };
 
   const docs  = data?.docs  || [];
   const stats = data?.stats || {};
@@ -344,11 +376,18 @@ export default function CompliancePage() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-base" style={{ color: '#1F2A24' }}>CERTIFICATES & DOCUMENTS</h3>
-          <button onClick={() => exportAll(docs, user)} disabled={loading || docs.length === 0}
-            className="flex items-center gap-2 text-xs px-4 py-1.5 rounded-lg font-semibold text-white disabled:opacity-50 transition-opacity"
-            style={{ background: '#1B5E20' }}>
-            <Download size={13} /> Export All ({docs.length})
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => { setShowUpload(true); setUploadDone(false); }}
+              className="flex items-center gap-2 text-xs px-4 py-1.5 rounded-lg font-semibold text-white"
+              style={{ background: '#2196F3' }}>
+              <Plus size={13} /> Add Document
+            </button>
+            <button onClick={() => exportAll(docs, user)} disabled={loading || docs.length === 0}
+              className="flex items-center gap-2 text-xs px-4 py-1.5 rounded-lg font-semibold text-white disabled:opacity-50 transition-opacity"
+              style={{ background: '#1B5E20' }}>
+              <Download size={13} /> Export All ({docs.length})
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -400,6 +439,85 @@ export default function CompliancePage() {
           </table>
         )}
       </div>
+
+      {/* ── Upload Document Modal ── */}
+      {showUpload && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)' }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+            {uploadDone ? (
+              <div className="flex flex-col items-center justify-center py-14 px-8 text-center">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ background: '#F1F8F0' }}>
+                  <CheckCircle2 size={36} style={{ color: '#1B5E20' }} />
+                </div>
+                <div className="text-xl font-bold mb-2" style={{ color: '#1B5E20', fontFamily: 'Georgia, serif' }}>Document Added!</div>
+                <div className="text-sm" style={{ color: '#5B6B63' }}>Your compliance document has been recorded and is now valid.</div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <Upload size={18} style={{ color: '#2196F3' }} />
+                    <span className="font-bold text-base" style={{ color: '#1F2A24' }}>Add Compliance Document</span>
+                  </div>
+                  <button onClick={() => setShowUpload(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+                </div>
+                <form onSubmit={handleUpload} className="p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <label className="text-xs font-semibold block mb-1" style={{ color: '#5B6B63' }}>Document Name *</label>
+                      <input required value={form.doc_name} onChange={e => setForm(f => ({ ...f, doc_name: e.target.value }))}
+                        placeholder="e.g. FSSAI License 2026" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-400" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-xs font-semibold block mb-1" style={{ color: '#5B6B63' }}>Document Type *</label>
+                      <select required value={form.doc_type} onChange={e => setForm(f => ({ ...f, doc_type: e.target.value }))}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:border-blue-400">
+                        {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold block mb-1" style={{ color: '#5B6B63' }}>Issue Date</label>
+                      <input type="date" value={form.issued_date} onChange={e => setForm(f => ({ ...f, issued_date: e.target.value }))}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-400" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold block mb-1" style={{ color: '#5B6B63' }}>Expiry Date</label>
+                      <input type="date" value={form.expires_date} onChange={e => setForm(f => ({ ...f, expires_date: e.target.value }))}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-400" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold block mb-1" style={{ color: '#5B6B63' }}>Quantity / Scope</label>
+                      <input value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
+                        placeholder="e.g. 500 L" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-400" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold block mb-1" style={{ color: '#5B6B63' }}>Verified Party</label>
+                      <input value={form.buyer_name} onChange={e => setForm(f => ({ ...f, buyer_name: e.target.value }))}
+                        placeholder="e.g. FSSAI / CPCB" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-400" />
+                    </div>
+                  </div>
+                  <div className="rounded-xl p-3 text-xs" style={{ background: '#EFF6FF', color: '#3B82F6' }}>
+                    Document will be saved as <span className="font-semibold">Valid</span> and available for download immediately.
+                  </div>
+                  <div className="flex gap-3 pt-1">
+                    <button type="button" onClick={() => setShowUpload(false)}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={saving}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-60"
+                      style={{ background: '#2196F3' }}>
+                      {saving
+                        ? <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving...</>
+                        : <><Upload size={14} /> Save Document</>}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
