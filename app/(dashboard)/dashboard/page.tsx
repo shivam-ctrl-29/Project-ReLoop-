@@ -278,14 +278,28 @@ function BuyerDashboard() {
 
 // ── Recycler Dashboard ──────────────────────────────────────────────────────
 function RecyclerDashboard() {
-  const [pickups, setPickups] = useState<any[]>([]);
+  const [pickups, setPickups]   = useState<any[]>([]);
+  const [updating, setUpdating] = useState<number | null>(null);
   const user = useUser();
 
-  useEffect(() => {
+  const load = () =>
     fetch('/api/pickups').then(r => r.json()).then(d => setPickups(d.pickups || [])).catch(() => {});
-  }, []);
 
-  const pending   = pickups.filter(p => p.status === 'requested' || p.status === 'scheduled').length;
+  useEffect(() => { load(); }, []);
+
+  const updateStatus = async (id: number, status: string) => {
+    setUpdating(id);
+    await fetch('/api/pickups', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    });
+    setUpdating(null);
+    load();
+  };
+
+  const pending   = pickups.filter(p => ['requested','scheduled'].includes(p.status)).length;
+  const confirmed = pickups.filter(p => p.status === 'confirmed').length;
   const completed = pickups.filter(p => p.status === 'collected').length;
 
   return (
@@ -294,53 +308,95 @@ function RecyclerDashboard() {
 
       <div className="mb-6 p-5 rounded-2xl text-white" style={{ background: '#7C3AED' }}>
         <div className="text-lg font-bold mb-1" style={{ fontFamily: 'Georgia, serif' }}>
-          Welcome, {user?.name?.split(' ')[0] ?? 'Partner'} 👋
+          Welcome, {user?.name?.split(' ')[0] ?? 'Partner'}
         </div>
         <p className="text-sm text-white/80">Manage e-waste collection assignments and track your completed pickups.</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="text-2xl font-bold mb-1" style={{ color: '#F59E0B' }}>{pending}</div>
-          <div className="text-sm" style={{ color: '#5B6B63' }}>Pending Pickups</div>
+          <div className="text-sm" style={{ color: '#5B6B63' }}>Awaiting Acceptance</div>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <div className="text-2xl font-bold mb-1" style={{ color: '#2196F3' }}>{confirmed}</div>
+          <div className="text-sm" style={{ color: '#5B6B63' }}>In Progress</div>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="text-2xl font-bold mb-1" style={{ color: '#1B5E20' }}>{completed}</div>
           <div className="text-sm" style={{ color: '#5B6B63' }}>Completed</div>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <div className="text-2xl font-bold mb-1" style={{ color: '#2196F3' }}>{pickups.length}</div>
+          <div className="text-2xl font-bold mb-1" style={{ color: '#7C3AED' }}>{pickups.length}</div>
           <div className="text-sm" style={{ color: '#5B6B63' }}>Total Assigned</div>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
         <h3 className="font-bold text-sm mb-4" style={{ color: '#1F2A24' }}>ASSIGNED PICKUPS</h3>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100">
-              {['Date','Type','Quantity','Status'].map(h => (
-                <th key={h} className="text-left pb-3 font-medium" style={{ color: '#5B6B63' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {pickups.slice(0,5).map((p: any, i: number) => {
-              const sc = statusColors[p.status] || { color: '#5B6B63', bg: '#F5F5F5' };
-              return (
-                <tr key={i} className="border-b border-gray-50">
-                  <td className="py-3" style={{ color: '#1F2A24' }}>{new Date(p.scheduled_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
-                  <td className="py-3 capitalize" style={{ color: '#1F2A24' }}>{p.resource_type || 'Oil'}</td>
-                  <td className="py-3" style={{ color: '#1F2A24' }}>{p.quantity || '—'}</td>
-                  <td className="py-3">
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize" style={{ color: sc.color, background: sc.bg }}>{p.status}</span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        <Link href="/schedule" className="mt-3 text-sm font-medium flex items-center gap-1" style={{ color: '#7C3AED' }}>
+        {pickups.length === 0 ? (
+          <div className="text-center py-10 text-sm text-gray-400">No pickups assigned yet</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                {['Date', 'Type', 'Quantity', 'Buyer', 'Status', 'Action'].map(h => (
+                  <th key={h} className="text-left pb-3 font-medium text-xs" style={{ color: '#5B6B63' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pickups.map((p: any, i: number) => {
+                const sc = statusColors[p.status] || { color: '#5B6B63', bg: '#F5F5F5' };
+                const isUpdating = updating === p.id;
+                return (
+                  <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <td className="py-3.5 text-xs font-semibold" style={{ color: '#1F2A24' }}>
+                      {new Date(p.scheduled_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      {p.time_slot && <div className="text-gray-400 font-normal">{p.time_slot}</div>}
+                    </td>
+                    <td className="py-3.5 text-xs capitalize" style={{ color: '#1F2A24' }}>{p.pickup_type || 'oil'}</td>
+                    <td className="py-3.5 text-xs" style={{ color: '#1F2A24' }}>{p.quantity || '—'}</td>
+                    <td className="py-3.5 text-xs" style={{ color: '#5B6B63' }}>{p.buyer_name || '—'}</td>
+                    <td className="py-3.5">
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize" style={{ color: sc.color, background: sc.bg }}>
+                        {p.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5">
+                      {(p.status === 'requested' || p.status === 'scheduled') && (
+                        <button
+                          onClick={() => updateStatus(p.id, 'confirmed')}
+                          disabled={isUpdating}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white disabled:opacity-50 flex items-center gap-1"
+                          style={{ background: '#2196F3' }}>
+                          {isUpdating ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle size={11} />}
+                          Accept
+                        </button>
+                      )}
+                      {p.status === 'confirmed' && (
+                        <button
+                          onClick={() => updateStatus(p.id, 'collected')}
+                          disabled={isUpdating}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white disabled:opacity-50 flex items-center gap-1"
+                          style={{ background: '#1B5E20' }}>
+                          {isUpdating ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle size={11} />}
+                          Mark Collected
+                        </button>
+                      )}
+                      {p.status === 'collected' && (
+                        <span className="text-xs font-semibold flex items-center gap-1" style={{ color: '#1B5E20' }}>
+                          <CheckCircle size={11} /> Done
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+        <Link href="/schedule" className="mt-4 text-sm font-medium flex items-center gap-1" style={{ color: '#7C3AED' }}>
           View all pickups <ArrowRight size={14} />
         </Link>
       </div>
