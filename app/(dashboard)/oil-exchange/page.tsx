@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Plus, Droplets, IndianRupee, TrendingUp, Recycle, Sparkles, X } from 'lucide-react';
+import { Plus, Droplets, IndianRupee, TrendingUp, Recycle, Sparkles, X, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import TopBar from '../../components/TopBar';
 import StatCard from '../../components/StatCard';
@@ -43,6 +43,7 @@ export default function OilExchangePage() {
   const [bidPrice, setBidPrice]     = useState('');
   const [bidding, setBidding]       = useState(false);
   const [bidDone, setBidDone]       = useState<string | null>(null);
+  const [bidSuccess, setBidSuccess] = useState(false);
 
   // AI estimator
   const [estType,   setEstType]   = useState('Cooking Oil (Refined)');
@@ -69,7 +70,12 @@ export default function OilExchangePage() {
     const res = await fetch('/api/oil/bids', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ listing_id: bidListing.id, bid_price: Number(bidPrice) }) });
     setBidding(false);
-    if (res.ok) { setBidDone(bidListing.listing_code); setBidListing(null); setBidPrice(''); load(); }
+    if (res.ok) {
+      setBidSuccess(true);
+      setBidDone(bidListing.listing_code);
+      load();
+      setTimeout(() => { setBidSuccess(false); setBidListing(null); setBidPrice(''); }, 2000);
+    }
   };
 
   const listings = data?.listings || [];
@@ -204,15 +210,32 @@ export default function OilExchangePage() {
                       {isBuyer && (
                         <td className="py-3">
                           {myBid ? (
-                            <span className="text-xs font-semibold" style={{ color: '#1B5E20' }}>
-                              ✓ Bid: ₹{myBid}/L
-                            </span>
-                          ) : (
-                            <button onClick={() => { setBidListing(l); setBidPrice(String(l.ai_price_min)); }}
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs font-bold" style={{ color: '#1B5E20' }}>₹{myBid}/L</span>
+                              {l.my_bid_status === 'accepted' && (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full" style={{ color: '#1B5E20', background: '#F1F8F0' }}>
+                                  <CheckCircle2 size={10} /> Accepted
+                                </span>
+                              )}
+                              {l.my_bid_status === 'pending' && (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full" style={{ color: '#D97706', background: '#FDF3E3' }}>
+                                  <Clock size={10} /> Pending
+                                </span>
+                              )}
+                              {l.my_bid_status === 'rejected' && (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full" style={{ color: '#DC2626', background: '#FEF2F2' }}>
+                                  <XCircle size={10} /> Rejected
+                                </span>
+                              )}
+                            </div>
+                          ) : l.status === 'active' ? (
+                            <button onClick={() => { setBidListing(l); setBidPrice(String(l.ai_price_min)); setBidSuccess(false); }}
                               className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white"
                               style={{ background: '#1B5E20' }}>
                               Place Bid
                             </button>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
                           )}
                         </td>
                       )}
@@ -273,56 +296,79 @@ export default function OilExchangePage() {
       {/* Bid Modal */}
       {bidListing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }}>
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-base" style={{ color: '#1F2A24' }}>Place Bid — {bidListing.listing_code}</h3>
-              <button onClick={() => setBidListing(null)}><X size={18} className="text-gray-400" /></button>
-            </div>
-            <div className="rounded-xl p-4 mb-4 space-y-1" style={{ background: '#F8FAF8' }}>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Oil Type</span>
-                <span className="font-medium" style={{ color: '#1F2A24' }}>{bidListing.oil_type}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Quantity</span>
-                <span className="font-medium" style={{ color: '#1F2A24' }}>{bidListing.quantity_liters} L</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Grade</span>
-                <span className="font-semibold text-xs px-2 py-0.5 rounded" style={{
-                          color: bidListing.grade === 'A' ? '#1B5E20' : bidListing.grade === 'B' ? '#D97706' : '#DC2626',
-                          background: bidListing.grade === 'A' ? '#F1F8F0' : bidListing.grade === 'B' ? '#FDF3E3' : '#FEF2F2',
-                        }}>
-                          {bidListing.grade === 'A' ? 'Grade A — Premium' : bidListing.grade === 'B' ? 'Grade B — Standard' : 'Grade C — Basic'}
-                        </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">AI Price Range</span>
-                <span className="font-semibold" style={{ color: '#F59E0B' }}>₹{bidListing.ai_price_min}–{bidListing.ai_price_max}/L</span>
-              </div>
-            </div>
-            <div className="mb-4">
-              <label className="text-sm font-medium block mb-2" style={{ color: '#1F2A24' }}>Your Bid Price (₹ per litre)</label>
-              <input type="number" value={bidPrice} onChange={e => setBidPrice(e.target.value)}
-                className="w-full text-lg font-bold border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-green-600"
-                style={{ color: '#1B5E20' }} placeholder="Enter price per litre" />
-              {bidPrice && (
-                <div className="mt-2 text-sm font-medium" style={{ color: '#5B6B63' }}>
-                  Total order value: <span style={{ color: '#1B5E20' }}>₹{(Number(bidPrice) * bidListing.quantity_liters).toLocaleString('en-IN')}</span>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            {bidSuccess ? (
+              <div className="flex flex-col items-center justify-center py-14 px-8 text-center">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ background: '#F1F8F0' }}>
+                  <CheckCircle2 size={36} style={{ color: '#1B5E20' }} />
                 </div>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setBidListing(null)}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
-                Cancel
-              </button>
-              <button onClick={handlePlaceBid} disabled={bidding || !bidPrice}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-                style={{ background: '#1B5E20' }}>
-                {bidding ? 'Placing...' : 'Confirm Bid'}
-              </button>
-            </div>
+                <div className="text-xl font-bold mb-2" style={{ color: '#1B5E20', fontFamily: 'Georgia, serif' }}>Bid Placed!</div>
+                <div className="text-sm" style={{ color: '#5B6B63' }}>
+                  Your bid on <span className="font-semibold">{bidListing.listing_code}</span> is now <span className="font-semibold text-amber-600">Pending</span>.<br />
+                  The seller will accept or reject it shortly.
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                  <h3 className="font-bold text-base" style={{ color: '#1F2A24' }}>Place Bid — {bidListing.listing_code}</h3>
+                  <button onClick={() => setBidListing(null)}><X size={18} className="text-gray-400" /></button>
+                </div>
+                <div className="p-6">
+                  <div className="rounded-xl p-4 mb-4 space-y-2" style={{ background: '#F8FAF8' }}>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Oil Type</span>
+                      <span className="font-medium" style={{ color: '#1F2A24' }}>{bidListing.oil_type}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Quantity</span>
+                      <span className="font-medium" style={{ color: '#1F2A24' }}>{bidListing.quantity_liters} L</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Grade</span>
+                      <span className="font-semibold text-xs px-2 py-0.5 rounded" style={{
+                        color: bidListing.grade === 'A' ? '#1B5E20' : bidListing.grade === 'B' ? '#D97706' : '#DC2626',
+                        background: bidListing.grade === 'A' ? '#F1F8F0' : bidListing.grade === 'B' ? '#FDF3E3' : '#FEF2F2',
+                      }}>
+                        {bidListing.grade === 'A' ? 'Grade A — Premium' : bidListing.grade === 'B' ? 'Grade B — Standard' : 'Grade C — Basic'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">AI Price Range</span>
+                      <span className="font-semibold" style={{ color: '#F59E0B' }}>₹{bidListing.ai_price_min}–{bidListing.ai_price_max}/L</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Seller</span>
+                      <span className="font-medium" style={{ color: '#1F2A24' }}>{bidListing.seller_name || '—'}</span>
+                    </div>
+                  </div>
+                  <div className="mb-5">
+                    <label className="text-sm font-medium block mb-2" style={{ color: '#1F2A24' }}>Your Bid Price (₹ per litre)</label>
+                    <input type="number" value={bidPrice} onChange={e => setBidPrice(e.target.value)}
+                      className="w-full text-lg font-bold border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-green-600"
+                      style={{ color: '#1B5E20' }} placeholder="Enter price per litre" />
+                    {bidPrice && (
+                      <div className="mt-2 text-sm font-medium" style={{ color: '#5B6B63' }}>
+                        Total order value: <span style={{ color: '#1B5E20' }}>₹{(Number(bidPrice) * bidListing.quantity_liters).toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => setBidListing(null)}
+                      className="flex-1 py-3 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
+                      Cancel
+                    </button>
+                    <button onClick={handlePlaceBid} disabled={bidding || !bidPrice}
+                      className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60 flex items-center justify-center gap-2"
+                      style={{ background: '#1B5E20' }}>
+                      {bidding
+                        ? <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Placing...</>
+                        : 'Confirm Bid'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

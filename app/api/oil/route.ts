@@ -20,7 +20,8 @@ export async function GET() {
                    ol.ai_price_min, ol.ai_price_max, ol.status,
                    u.name AS seller_name,
                    (SELECT COUNT(*) FROM oil_bids WHERE listing_id = ol.id) AS bids,
-                   (SELECT bid_price FROM oil_bids WHERE listing_id = ol.id AND buyer_id = $1 LIMIT 1) AS my_bid
+                   (SELECT bid_price FROM oil_bids WHERE listing_id = ol.id AND buyer_id = $1 LIMIT 1) AS my_bid,
+                   (SELECT status FROM oil_bids WHERE listing_id = ol.id AND buyer_id = $1 LIMIT 1) AS my_bid_status
             FROM oil_listings ol
             JOIN users u ON u.id = ol.user_id
             WHERE ol.status IN ('active','matched')
