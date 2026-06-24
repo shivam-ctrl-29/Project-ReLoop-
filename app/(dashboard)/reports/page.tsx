@@ -145,18 +145,21 @@ function downloadESGPDF(totals: any) {
 }
 
 // ── CSV: Transaction Ledger ──────────────────────────────────────────────────
-function downloadLedgerCSV(monthly: any[]) {
-  const header = ['Month','Oil Collected (L)','E-Waste Items','Revenue (INR)','CO2 Saved (T)','Water Saved (L)'];
-  const rows = monthly.map((m: any) => [
-    m.month,
-    Number(m.oil_collected||0).toFixed(0),
-    m.ewaste_items||0,
-    Number(m.revenue||0).toFixed(0),
-    Number(m.co2_saved||0).toFixed(2),
-    Number(m.water_saved||0).toFixed(0),
+function downloadLedgerCSV(transactions: any[]) {
+  const header = ['Date','Category','Type','Reference','Description','Qty/Details','Amount (INR)','Status','Counterparty'];
+  const rows = transactions.map((t: any) => [
+    t.date,
+    t.category,
+    t.type,
+    t.reference,
+    t.description,
+    t.qty,
+    Number(t.amount||0).toFixed(0),
+    t.status,
+    t.counterparty,
   ]);
-  const csv = [header, ...rows].map(r => r.map((c: any) => `"${c}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
+  const csv = [header, ...rows].map(r => r.map((c: any) => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url; a.download = 'ReLoop-Transaction-Ledger.csv'; a.click();
@@ -186,12 +189,20 @@ function downloadNAACCSV(totals: any) {
 }
 
 export default function ReportsPage() {
-  const [data, setData]       = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [dlKey, setDlKey]     = useState<string | null>(null);
+  const [data, setData]               = useState<any>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [dlKey, setDlKey]             = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/reports').then(r => r.json()).then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
+    Promise.all([
+      fetch('/api/reports').then(r => r.json()),
+      fetch('/api/reports/ledger').then(r => r.json()),
+    ]).then(([rep, led]) => {
+      setData(rep);
+      setTransactions(led?.transactions || []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   const monthly = data?.monthly || [];
@@ -209,8 +220,8 @@ export default function ReportsPage() {
       fn: () => downloadESGPDF(totals),
     },
     {
-      key: 'ledger', label: 'Transaction Ledger', desc: 'All pickups & revenues', format: 'CSV',
-      fn: () => downloadLedgerCSV(monthly),
+      key: 'ledger', label: 'Transaction Ledger', desc: `${transactions.length} real transactions`, format: 'CSV',
+      fn: () => downloadLedgerCSV(transactions),
     },
     {
       key: 'naac', label: 'NAAC Green Campus Data', desc: 'Formatted for NAAC submission', format: 'CSV',
@@ -306,6 +317,71 @@ export default function ReportsPage() {
             ))}
           </div>
         </div>
+      </div>
+      {/* ── Transaction Ledger Preview ── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mt-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-base" style={{ color: '#1F2A24' }}>TRANSACTION LEDGER</h3>
+          <button onClick={() => handleExport('ledger', () => downloadLedgerCSV(transactions))}
+            disabled={loading || dlKey === 'ledger'}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 disabled:opacity-50">
+            {dlKey === 'ledger' ? <><Loader2 size={12} className="animate-spin" /> Wait...</> : <><Download size={12} /> Export CSV</>}
+          </button>
+        </div>
+        {loading ? (
+          <div className="text-sm text-gray-400 text-center py-6">Loading transactions...</div>
+        ) : transactions.length === 0 ? (
+          <div className="text-sm text-gray-400 text-center py-6">No transactions found.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {['Date','Category','Reference','Description','Amount','Status','Counterparty'].map(h => (
+                    <th key={h} className="text-left pb-2.5 font-semibold pr-4" style={{ color: '#5B6B63' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.slice(0, 15).map((t: any, i: number) => {
+                  const catColor: Record<string,{color:string;bg:string}> = {
+                    'Oil Exchange':  { color: '#D97706', bg: '#FDF3E3' },
+                    'E-Waste Market':{ color: '#2196F3', bg: '#E8F2FC' },
+                    'Pickup':        { color: '#1B5E20', bg: '#F1F8F0' },
+                  };
+                  const cc = catColor[t.category] || { color: '#5B6B63', bg: '#F5F5F5' };
+                  const statusColor: Record<string,string> = {
+                    accepted: '#1B5E20', confirmed: '#1B5E20', collected: '#1B5E20',
+                    pending: '#D97706', requested: '#2196F3', scheduled: '#2196F3',
+                    rejected: '#DC2626', cancelled: '#DC2626',
+                  };
+                  return (
+                    <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                      <td className="py-2.5 pr-4" style={{ color: '#5B6B63' }}>{t.date}</td>
+                      <td className="py-2.5 pr-4">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ color: cc.color, background: cc.bg }}>{t.category}</span>
+                      </td>
+                      <td className="py-2.5 pr-4 font-semibold" style={{ color: '#1B5E20' }}>{t.reference}</td>
+                      <td className="py-2.5 pr-4 max-w-[180px] truncate" style={{ color: '#1F2A24' }}>{t.description}</td>
+                      <td className="py-2.5 pr-4 font-bold" style={{ color: '#F59E0B' }}>
+                        {Number(t.amount) > 0 ? `₹${Number(t.amount).toLocaleString('en-IN')}` : '—'}
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        <span className="font-semibold capitalize" style={{ color: statusColor[t.status] || '#5B6B63' }}>{t.status}</span>
+                      </td>
+                      <td className="py-2.5" style={{ color: '#5B6B63' }}>{t.counterparty}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {transactions.length > 15 && (
+              <div className="text-xs text-center pt-3" style={{ color: '#5B6B63' }}>
+                Showing 15 of {transactions.length} transactions — export CSV for full ledger
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
