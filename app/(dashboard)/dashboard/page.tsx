@@ -50,6 +50,7 @@ function AdminDashboard() {
     { icon: Truck,    label: 'Schedule a Pickup',    sub: "We'll collect your used oil",  href: '/schedule' },
     { icon: FileDown, label: 'Download Certificate',  sub: 'For FSSAI records',            href: '/compliance' },
     { icon: History,  label: 'Collection History',    sub: 'All past pickups',             href: '/collections' },
+    { icon: Users,    label: 'Admin Panel',           sub: 'Manage users & pickups',       href: '/admin' },
   ];
 
   return (
