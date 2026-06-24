@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   Droplets, IndianRupee, Wind, ShieldCheck, Truck, FileDown,
   History, Search, Recycle, Cpu, ArrowRight, Package, Clock, CheckCircle,
-  CheckCircle2, XCircle, AlertCircle, Users
+  CheckCircle2, XCircle, AlertCircle, Users, TrendingUp, Leaf, Zap, FlaskConical
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import TopBar from '../../components/TopBar';
@@ -31,6 +31,7 @@ function AdminDashboard() {
   const s = data?.stats || {};
   const pickups = data?.pickups || [];
   const chart = data?.chart || [];
+  const profit = data?.profit || {};
 
   const quickActions = [
     { icon: Truck,    label: 'Schedule a Pickup',    sub: "We'll collect your used oil",  href: '/schedule' },
@@ -107,6 +108,132 @@ function AdminDashboard() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ── Financial P&L Section ── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#F1F8F0' }}>
+            <TrendingUp size={18} style={{ color: '#1B5E20' }} />
+          </div>
+          <div>
+            <h3 className="font-bold text-base" style={{ color: '#1F2A24' }}>FINANCIAL IMPACT — YTD 2026</h3>
+            <p className="text-xs" style={{ color: '#5B6B63' }}>Direct revenue + cost savings from circular resource management</p>
+          </div>
+          {!loading && (
+            <div className="ml-auto text-right">
+              <div className="text-xs font-medium mb-0.5" style={{ color: '#5B6B63' }}>Total Benefit to Institution</div>
+              <div className="text-2xl font-black" style={{ color: '#1B5E20', fontFamily: 'Georgia, serif' }}>
+                ₹{Number(profit.total_profit || 0).toLocaleString('en-IN')}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {/* Revenue column */}
+          <div className="rounded-2xl p-4 border border-green-100" style={{ background: '#F1F8F0' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <IndianRupee size={14} style={{ color: '#1B5E20' }} />
+              <span className="text-xs font-bold uppercase tracking-wide" style={{ color: '#1B5E20' }}>Direct Revenue</span>
+            </div>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs" style={{ color: '#5B6B63' }}>
+                  <FlaskConical size={11} /> Oil Exchange Sales
+                </div>
+                <span className="text-sm font-bold" style={{ color: '#1F2A24' }}>₹{Number(profit.revenue_oil || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs" style={{ color: '#5B6B63' }}>
+                  <Cpu size={11} /> E-Waste Market Sales
+                </div>
+                <span className="text-sm font-bold" style={{ color: '#1F2A24' }}>₹{Number(profit.revenue_ewaste || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="pt-2 mt-1 border-t border-green-200 flex items-center justify-between">
+                <span className="text-xs font-bold" style={{ color: '#1B5E20' }}>Total Revenue</span>
+                <span className="text-base font-black" style={{ color: '#1B5E20' }}>₹{Number(profit.total_revenue || 0).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Cost savings column */}
+          <div className="rounded-2xl p-4 border border-blue-100" style={{ background: '#EFF6FF' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Zap size={14} style={{ color: '#2196F3' }} />
+              <span className="text-xs font-bold uppercase tracking-wide" style={{ color: '#2196F3' }}>Cost Savings</span>
+            </div>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs" style={{ color: '#5B6B63' }}>
+                  <Droplets size={11} /> Water (₹5/L avoided)
+                </div>
+                <span className="text-sm font-bold" style={{ color: '#1F2A24' }}>₹{Number(profit.water_savings || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs" style={{ color: '#5B6B63' }}>
+                  <Recycle size={11} /> Oil disposal (₹8/L avoided)
+                </div>
+                <span className="text-sm font-bold" style={{ color: '#1F2A24' }}>₹{Number(profit.oil_disposal || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs" style={{ color: '#5B6B63' }}>
+                  <Cpu size={11} /> E-waste disposal (₹500/item)
+                </div>
+                <span className="text-sm font-bold" style={{ color: '#1F2A24' }}>₹{Number(profit.ewaste_disposal || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="pt-2 mt-1 border-t border-blue-200 flex items-center justify-between">
+                <span className="text-xs font-bold" style={{ color: '#2196F3' }}>Total Savings</span>
+                <span className="text-base font-black" style={{ color: '#2196F3' }}>₹{Number(profit.total_cost_savings || 0).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Carbon credits column */}
+          <div className="rounded-2xl p-4 border border-amber-100" style={{ background: '#FFFBEB' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Leaf size={14} style={{ color: '#D97706' }} />
+              <span className="text-xs font-bold uppercase tracking-wide" style={{ color: '#D97706' }}>Carbon Credits</span>
+            </div>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: '#5B6B63' }}>CO₂ Offset</span>
+                <span className="text-sm font-bold" style={{ color: '#1F2A24' }}>{Number(profit.co2_tons || 0).toFixed(1)} T</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: '#5B6B63' }}>Credit Rate</span>
+                <span className="text-sm font-bold" style={{ color: '#1F2A24' }}>₹2,000/T</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: '#5B6B63' }}>Water Conserved</span>
+                <span className="text-sm font-bold" style={{ color: '#1F2A24' }}>{(Number(profit.water_liters || 0)/1000).toFixed(1)} KL</span>
+              </div>
+              <div className="pt-2 mt-1 border-t border-amber-200 flex items-center justify-between">
+                <span className="text-xs font-bold" style={{ color: '#D97706' }}>Carbon Value</span>
+                <span className="text-base font-black" style={{ color: '#D97706' }}>₹{Number(profit.co2_credits || 0).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Total profit bar */}
+        {!loading && (
+          <div className="rounded-2xl p-4 flex items-center justify-between" style={{ background: '#1B5E20' }}>
+            <div>
+              <div className="text-white/70 text-xs font-medium mb-0.5">NET INSTITUTIONAL BENEFIT (Revenue + Cost Savings + Carbon Credits)</div>
+              <div className="text-3xl font-black text-white" style={{ fontFamily: 'Georgia, serif' }}>
+                ₹{Number(profit.total_profit || 0).toLocaleString('en-IN')}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-white/70 text-xs mb-1">Breakdown</div>
+              <div className="text-xs text-white/90 space-y-0.5">
+                <div>Revenue: ₹{Number(profit.total_revenue || 0).toLocaleString('en-IN')}</div>
+                <div>Savings: ₹{Number(profit.total_cost_savings || 0).toLocaleString('en-IN')}</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
