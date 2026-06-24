@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Plus, Cpu, IndianRupee, PackageCheck, Recycle, Sparkles, X, ShoppingCart, CheckCircle2, Tag, Wrench, RefreshCw, Heart } from 'lucide-react';
+import { Plus, Cpu, IndianRupee, PackageCheck, Recycle, Sparkles, X, ShoppingCart, CheckCircle2, Tag, Wrench, RefreshCw, Heart, Leaf, AlertTriangle, Info } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import TopBar from '../../components/TopBar';
 import StatCard from '../../components/StatCard';
@@ -386,7 +386,8 @@ export default function EWastePage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 mb-5">
+                  {/* Quick meta row */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="rounded-xl p-3" style={{ background: '#F9FAFB' }}>
                       <div className="text-xs mb-1" style={{ color: '#5B6B63' }}>Category</div>
                       <div className="text-sm font-semibold capitalize" style={{ color: '#1F2A24' }}>{buyModal.category}</div>
@@ -395,25 +396,77 @@ export default function EWastePage() {
                       <div className="text-xs mb-1" style={{ color: '#5B6B63' }}>Condition</div>
                       <div className="text-sm font-semibold capitalize" style={{ color: '#1F2A24' }}>{buyModal.condition}</div>
                     </div>
-                    <div className="rounded-xl p-3" style={{ background: '#F9FAFB' }}>
-                      <div className="text-xs mb-1" style={{ color: '#5B6B63' }}>AI Triage</div>
-                      <div className="text-sm font-semibold capitalize flex items-center gap-1.5">
-                        {buyModal.ai_triage === 'resell'  && <><Tag size={12} style={{ color: '#1B5E20' }} /><span style={{ color: '#1B5E20' }}>Resell</span></>}
-                        {buyModal.ai_triage === 'repair'  && <><Wrench size={12} style={{ color: '#2196F3' }} /><span style={{ color: '#2196F3' }}>Repair</span></>}
-                        {buyModal.ai_triage === 'recycle' && <><RefreshCw size={12} style={{ color: '#F59E0B' }} /><span style={{ color: '#F59E0B' }}>Recycle</span></>}
-                        {buyModal.ai_triage === 'donate'  && <><Heart size={12} style={{ color: '#9333EA' }} /><span style={{ color: '#9333EA' }}>Donate</span></>}
-                      </div>
-                    </div>
-                    <div className="rounded-xl p-3" style={{ background: '#FDF3E3' }}>
-                      <div className="text-xs mb-1" style={{ color: '#5B6B63' }}>Estimated Value</div>
-                      <div className="text-sm font-bold" style={{ color: '#F59E0B' }}>
-                        ₹{Number(buyModal.ai_price_min).toLocaleString('en-IN')} – ₹{Number(buyModal.ai_price_max).toLocaleString('en-IN')}
-                      </div>
-                    </div>
                   </div>
 
-                  <div className="rounded-xl p-3 mb-5 text-xs" style={{ background: '#F1F8F0', color: '#5B6B63' }}>
-                    By confirming, you agree to collect this item from the seller within <span className="font-semibold text-green-800">5 working days</span>. Payment is handled directly between parties.
+                  {/* ── AI Triage Analysis Panel ── */}
+                  {(() => {
+                    const triageMap: Record<string, {
+                      icon: any; color: string; bg: string; border: string;
+                      label: string; headline: string; desc: string; impact: string; action: string;
+                    }> = {
+                      resell:  { icon: Tag,       color: '#1B5E20', bg: '#F1F8F0', border: '#BBF7D0',
+                                 label: 'Resell',  headline: 'Ready to Resell',
+                                 desc:  'AI assessed this item as fully functional with high resale value. It passed condition, cosmetic, and functionality checks.',
+                                 impact: 'Keeps device in use — avoids ~18 kg CO₂ from manufacturing a replacement.',
+                                 action: 'Collect & resell directly or list on a secondary market.' },
+                      repair:  { icon: Wrench,    color: '#2196F3', bg: '#E8F2FC', border: '#BFDBFE',
+                                 label: 'Repair',  headline: 'Repairable Device',
+                                 desc:  'AI detected partial defects (battery, screen, or board). With minor repairs this item can be fully restored.',
+                                 impact: 'Repair extends device life by 2–4 years, saving ~12 kg CO₂.',
+                                 action: 'Send to a CPCB-authorised repair centre in Indore.' },
+                      recycle: { icon: RefreshCw, color: '#D97706', bg: '#FDF3E3', border: '#FDE68A',
+                                 label: 'Recycle', headline: 'Recommended for Recycling',
+                                 desc:  'AI determined this item is past its useful life. Responsible recycling recovers valuable metals and prevents toxic landfill.',
+                                 impact: 'Proper recycling recovers Au, Cu, Pd — worth ₹200–800 in raw materials.',
+                                 action: 'Route to one of 12 CPCB-verified recyclers in Indore.' },
+                      donate:  { icon: Heart,     color: '#9333EA', bg: '#FAF5FF', border: '#DDD6FE',
+                                 label: 'Donate',  headline: 'Suitable for Donation',
+                                 desc:  'AI classified this item as functional but dated. Donating extends its utility for educational or community use.',
+                                 impact: 'Donation avoids disposal and benefits a recipient directly.',
+                                 action: 'Connect with NGO partners for same-week collection.' },
+                    };
+                    const t = triageMap[buyModal.ai_triage] || triageMap['recycle'];
+                    const TriageIcon = t.icon;
+                    return (
+                      <div className="rounded-xl border p-4 mb-4" style={{ background: t.bg, borderColor: t.border }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: t.color + '22' }}>
+                            <Sparkles size={13} style={{ color: t.color }} />
+                          </div>
+                          <span className="text-xs font-bold uppercase tracking-wide" style={{ color: t.color }}>AI Triage Result</span>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: t.color + '18' }}>
+                            <TriageIcon size={18} style={{ color: t.color }} />
+                          </div>
+                          <div>
+                            <div className="font-bold text-sm mb-0.5" style={{ color: t.color }}>{t.headline}</div>
+                            <div className="text-xs leading-relaxed" style={{ color: '#4B5563' }}>{t.desc}</div>
+                          </div>
+                        </div>
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-start gap-2 text-xs" style={{ color: '#5B6B63' }}>
+                            <Leaf size={11} className="mt-0.5 flex-shrink-0" style={{ color: '#1B5E20' }} />
+                            <span><span className="font-semibold">Environmental impact: </span>{t.impact}</span>
+                          </div>
+                          <div className="flex items-start gap-2 text-xs" style={{ color: '#5B6B63' }}>
+                            <Info size={11} className="mt-0.5 flex-shrink-0" style={{ color: '#2196F3' }} />
+                            <span><span className="font-semibold">Recommended action: </span>{t.action}</span>
+                          </div>
+                        </div>
+                        <div className="mt-3 pt-3 border-t flex items-center justify-between" style={{ borderColor: t.border }}>
+                          <span className="text-xs" style={{ color: '#5B6B63' }}>AI Estimated Value</span>
+                          <span className="text-sm font-bold" style={{ color: '#F59E0B' }}>
+                            ₹{Number(buyModal.ai_price_min).toLocaleString('en-IN')} – ₹{Number(buyModal.ai_price_max).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="rounded-xl p-3 mb-4 text-xs flex items-start gap-2" style={{ background: '#FFFBEB', color: '#92400E' }}>
+                    <AlertTriangle size={12} className="flex-shrink-0 mt-0.5" />
+                    By confirming, you agree to collect this item within <span className="font-semibold mx-1">5 working days</span>. Payment is handled directly between parties.
                   </div>
 
                   <div className="flex gap-3">
