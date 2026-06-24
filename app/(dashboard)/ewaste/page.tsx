@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Plus, Cpu, IndianRupee, PackageCheck, Recycle, Sparkles } from 'lucide-react';
+import { Plus, Cpu, IndianRupee, PackageCheck, Recycle, Sparkles, X, ShoppingCart, CheckCircle2, Tag, Wrench, RefreshCw, Heart } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import TopBar from '../../components/TopBar';
 import StatCard from '../../components/StatCard';
@@ -26,6 +26,8 @@ export default function EWastePage() {
   const [form, setForm] = useState({ item_name: '', category: 'laptop', brand: '', condition: 'working', ai_triage: 'resell', ai_price_min: '', ai_price_max: '' });
   const [saving, setSaving] = useState(false);
   const [buying, setBuying] = useState<number | null>(null);
+  const [buyModal, setBuyModal] = useState<any | null>(null);
+  const [buyDone, setBuyDone] = useState(false);
 
   // AI Triage Estimator state
   const [estCat, setEstCat] = useState('laptop');
@@ -107,15 +109,17 @@ export default function EWastePage() {
     setSaving(false); setShowForm(false); load();
   };
 
-  const handleBuy = async (id: number) => {
-    setBuying(id);
+  const handleBuy = async () => {
+    if (!buyModal) return;
+    setBuying(buyModal.id);
     await fetch('/api/ewaste/buy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ listing_id: id }),
+      body: JSON.stringify({ listing_id: buyModal.id }),
     });
     setBuying(null);
-    load();
+    setBuyDone(true);
+    setTimeout(() => { setBuyDone(false); setBuyModal(null); load(); }, 1800);
   };
 
   const listings = data?.listings || [];
@@ -229,11 +233,13 @@ export default function EWastePage() {
                       {isBuyer && (
                         <td className="py-3">
                           {item.status === 'listed' ? (
-                            <button onClick={() => handleBuy(item.id)} disabled={buying === item.id}
-                              className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white disabled:opacity-50"
+                            <button onClick={() => { setBuyModal(item); setBuyDone(false); }}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white"
                               style={{ background: '#1B5E20' }}>
-                              {buying === item.id ? 'Buying...' : 'Buy Now'}
+                              Buy Now
                             </button>
+                          ) : item.status === 'matched' ? (
+                            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ color: '#2196F3', background: '#E8F2FC' }}>Sold</span>
                           ) : (
                             <span className="text-xs font-semibold" style={{ color: '#5B6B63' }}>—</span>
                           )}
@@ -337,6 +343,98 @@ export default function EWastePage() {
           </div>
         </div>
       </div>
+
+      {/* ── Purchase Confirmation Modal ── */}
+      {buyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)' }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+
+            {buyDone ? (
+              <div className="flex flex-col items-center justify-center py-14 px-8 text-center">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ background: '#F1F8F0' }}>
+                  <CheckCircle2 size={36} style={{ color: '#1B5E20' }} />
+                </div>
+                <div className="text-xl font-bold mb-2" style={{ color: '#1B5E20', fontFamily: 'Georgia, serif' }}>Order Confirmed!</div>
+                <div className="text-sm" style={{ color: '#5B6B63' }}>
+                  {buyModal.item_name} has been reserved for you.<br />Check <span className="font-semibold">My Orders</span> for details.
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <ShoppingCart size={18} style={{ color: '#1B5E20' }} />
+                    <span className="font-bold text-base" style={{ color: '#1F2A24' }}>Confirm Purchase</span>
+                  </div>
+                  <button onClick={() => setBuyModal(null)} className="text-gray-400 hover:text-gray-600">
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Item details */}
+                <div className="px-6 py-5">
+                  <div className="flex items-start gap-4 mb-5">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#F1F8F0' }}>
+                      <Cpu size={22} style={{ color: '#1B5E20' }} />
+                    </div>
+                    <div>
+                      <div className="font-bold text-base" style={{ color: '#1F2A24' }}>{buyModal.item_name}</div>
+                      <div className="text-xs mt-0.5" style={{ color: '#5B6B63' }}>
+                        {buyModal.listing_code} · {buyModal.seller_name || 'Campus Seller'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-5">
+                    <div className="rounded-xl p-3" style={{ background: '#F9FAFB' }}>
+                      <div className="text-xs mb-1" style={{ color: '#5B6B63' }}>Category</div>
+                      <div className="text-sm font-semibold capitalize" style={{ color: '#1F2A24' }}>{buyModal.category}</div>
+                    </div>
+                    <div className="rounded-xl p-3" style={{ background: '#F9FAFB' }}>
+                      <div className="text-xs mb-1" style={{ color: '#5B6B63' }}>Condition</div>
+                      <div className="text-sm font-semibold capitalize" style={{ color: '#1F2A24' }}>{buyModal.condition}</div>
+                    </div>
+                    <div className="rounded-xl p-3" style={{ background: '#F9FAFB' }}>
+                      <div className="text-xs mb-1" style={{ color: '#5B6B63' }}>AI Triage</div>
+                      <div className="text-sm font-semibold capitalize flex items-center gap-1.5">
+                        {buyModal.ai_triage === 'resell'  && <><Tag size={12} style={{ color: '#1B5E20' }} /><span style={{ color: '#1B5E20' }}>Resell</span></>}
+                        {buyModal.ai_triage === 'repair'  && <><Wrench size={12} style={{ color: '#2196F3' }} /><span style={{ color: '#2196F3' }}>Repair</span></>}
+                        {buyModal.ai_triage === 'recycle' && <><RefreshCw size={12} style={{ color: '#F59E0B' }} /><span style={{ color: '#F59E0B' }}>Recycle</span></>}
+                        {buyModal.ai_triage === 'donate'  && <><Heart size={12} style={{ color: '#9333EA' }} /><span style={{ color: '#9333EA' }}>Donate</span></>}
+                      </div>
+                    </div>
+                    <div className="rounded-xl p-3" style={{ background: '#FDF3E3' }}>
+                      <div className="text-xs mb-1" style={{ color: '#5B6B63' }}>Estimated Value</div>
+                      <div className="text-sm font-bold" style={{ color: '#F59E0B' }}>
+                        ₹{Number(buyModal.ai_price_min).toLocaleString('en-IN')} – ₹{Number(buyModal.ai_price_max).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl p-3 mb-5 text-xs" style={{ background: '#F1F8F0', color: '#5B6B63' }}>
+                    By confirming, you agree to collect this item from the seller within <span className="font-semibold text-green-800">5 working days</span>. Payment is handled directly between parties.
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button onClick={() => setBuyModal(null)}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
+                      Cancel
+                    </button>
+                    <button onClick={handleBuy} disabled={buying === buyModal.id}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-60"
+                      style={{ background: '#1B5E20' }}>
+                      {buying === buyModal.id
+                        ? <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Confirming...</>
+                        : <><ShoppingCart size={14} /> Confirm Purchase</>}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
