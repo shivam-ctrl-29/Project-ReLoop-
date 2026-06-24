@@ -26,6 +26,25 @@ export async function GET() {
   }
 }
 
+// DELETE — cancel a pending bid
+export async function DELETE(req: NextRequest) {
+  const authUser = await getUserFromToken();
+  if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { bid_id } = await req.json();
+  if (!bid_id) return NextResponse.json({ error: 'bid_id required' }, { status: 400 });
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `DELETE FROM oil_bids WHERE id = $1 AND buyer_id = $2 AND status = 'pending' RETURNING id`,
+      [bid_id, authUser.id]
+    );
+    if (result.rows.length === 0) return NextResponse.json({ error: 'Bid not found or not cancellable' }, { status: 404 });
+    return NextResponse.json({ success: true });
+  } finally {
+    client.release();
+  }
+}
+
 // POST — place a new bid
 export async function POST(req: NextRequest) {
   const authUser = await getUserFromToken();

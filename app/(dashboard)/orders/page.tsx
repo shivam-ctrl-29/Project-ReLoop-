@@ -21,8 +21,9 @@ export default function OrdersPage() {
   const [ewasteOrders, setEwasteOrders] = useState<any[]>([]);
   const [pickups, setPickups]         = useState<any[]>([]);
   const [loading, setLoading]         = useState(true);
+  const [cancelling, setCancelling]   = useState<number | null>(null);
 
-  useEffect(() => {
+  const load = () => {
     Promise.all([
       fetch('/api/oil/bids').then(r => r.json()),
       fetch('/api/ewaste/orders').then(r => r.json()),
@@ -33,7 +34,20 @@ export default function OrdersPage() {
       setPickups(Array.isArray(pkp?.pickups) ? pkp.pickups : []);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const cancelBid = async (bidId: number) => {
+    setCancelling(bidId);
+    await fetch('/api/oil/bids', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bid_id: bidId }),
+    });
+    setCancelling(null);
+    load();
+  };
 
   const pending    = bids.filter(b => b.status === 'pending').length;
   const accepted   = bids.filter(b => b.status === 'accepted').length + ewasteOrders.length;
@@ -181,7 +195,7 @@ export default function OrdersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
-                {['Listing', 'Oil Type', 'Quantity', 'Grade', 'Your Bid', 'Order Value', 'Seller', 'Status'].map(h => (
+                {['Listing', 'Oil Type', 'Quantity', 'Grade', 'Your Bid', 'Order Value', 'Seller', 'Status', ''].map(h => (
                   <th key={h} className="text-left pb-3 font-medium text-xs" style={{ color: '#5B6B63' }}>{h}</th>
                 ))}
               </tr>
@@ -209,6 +223,21 @@ export default function OrdersPage() {
                       <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ color: st.color, background: st.bg }}>
                         <Icon size={10} /> {st.label}
                       </span>
+                    </td>
+                    <td className="py-3.5">
+                      {b.status === 'pending' && (
+                        <button
+                          onClick={() => cancelBid(b.id)}
+                          disabled={cancelling === b.id}
+                          className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border border-red-200 disabled:opacity-50"
+                          style={{ color: '#DC2626', background: '#FEF2F2' }}
+                        >
+                          {cancelling === b.id
+                            ? <span className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                            : <XCircle size={10} />}
+                          Cancel
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
