@@ -368,12 +368,27 @@ export default function SchedulePage() {
                   const dateStr = new Date(p.scheduled_date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
                   const canVerify = p.pickup_type === 'oil' && ['scheduled', 'confirmed', 'requested'].includes(p.status);
                   const alreadyVerified = p.tpc_reading != null;
+                  const STEPS = [
+                    { key: 'requested',  label: 'Requested',  icon: Clock },
+                    { key: 'confirmed',  label: 'Confirmed',  icon: CheckCircle2 },
+                    { key: 'collected',  label: 'Collected',  icon: Truck },
+                  ];
+                  const stepOrder = ['requested', 'scheduled', 'confirmed', 'collected'];
+                  const currentIdx = stepOrder.indexOf(p.status);
+                  const getStepState = (key: string) => {
+                    const stepIdx = stepOrder.indexOf(key === 'confirmed' ? 'confirmed' : key);
+                    if (currentIdx > stepIdx) return 'done';
+                    if (currentIdx === stepIdx || (key === 'confirmed' && p.status === 'scheduled')) return 'active';
+                    return 'pending';
+                  };
+
                   return (
-                    <div key={p.id} className="p-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#F1F8F0' }}>
-                            {p.pickup_type === 'ewaste' ? <Package size={17} style={{ color: '#1B5E20' }} /> : <Truck size={17} style={{ color: '#1B5E20' }} />}
+                    <div key={p.id} className="p-4 rounded-xl border border-gray-100 hover:shadow-sm transition-shadow">
+                      {/* Header row */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#F1F8F0' }}>
+                            {p.pickup_type === 'ewaste' ? <Package size={16} style={{ color: '#1B5E20' }} /> : <Truck size={16} style={{ color: '#1B5E20' }} />}
                           </div>
                           <div>
                             <div className="font-semibold text-sm" style={{ color: '#1F2A24' }}>{dateStr} · {p.time_slot}</div>
@@ -383,9 +398,6 @@ export default function SchedulePage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize" style={{ color: sc.color, background: sc.bg }}>
-                            {p.status}
-                          </span>
                           {canVerify && !alreadyVerified && (
                             <button onClick={() => openVerify(p)}
                               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl text-white"
@@ -401,6 +413,35 @@ export default function SchedulePage() {
                           )}
                         </div>
                       </div>
+
+                      {/* ── Status Timeline ── */}
+                      <div className="flex items-center">
+                        {STEPS.map((step, si) => {
+                          const state = getStepState(step.key);
+                          const StepIcon = step.icon;
+                          const isLast = si === STEPS.length - 1;
+                          const dotColor  = state === 'done' ? '#1B5E20' : state === 'active' ? '#2196F3' : '#D1D5DB';
+                          const dotBg     = state === 'done' ? '#F1F8F0' : state === 'active' ? '#E8F2FC' : '#F9FAFB';
+                          const lineColor = state === 'done' ? '#1B5E20' : '#E5E7EB';
+                          return (
+                            <div key={step.key} className="flex items-center flex-1 min-w-0">
+                              <div className="flex flex-col items-center gap-1">
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all"
+                                  style={{ borderColor: dotColor, background: dotBg }}>
+                                  <StepIcon size={13} style={{ color: dotColor }} />
+                                </div>
+                                <span className="text-xs font-medium whitespace-nowrap" style={{
+                                  color: state === 'active' ? '#2196F3' : state === 'done' ? '#1B5E20' : '#9CA3AF'
+                                }}>{step.label}</span>
+                              </div>
+                              {!isLast && (
+                                <div className="flex-1 h-0.5 mx-1 mb-4 rounded-full transition-all" style={{ background: lineColor }} />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
                       {/* Show verified grade if already done */}
                       {alreadyVerified && (
                         <div className="mt-3 flex items-center gap-3 p-2.5 rounded-xl text-xs" style={{ background: '#F1F8F0' }}>
