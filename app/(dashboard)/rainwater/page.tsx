@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { CloudRain, Droplets, IndianRupee, TrendingUp } from 'lucide-react';
+import { CloudRain, Droplets, IndianRupee, TrendingUp, Building2, Ruler, Wind } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar } from 'recharts';
 import TopBar from '../../components/TopBar';
 import StatCard from '../../components/StatCard';
@@ -135,35 +135,56 @@ export default function RainwaterPage() {
         </div>
       </div>
 
-      {/* Buildings Table */}
+      {/* Buildings Cards */}
       <div className="flex gap-5 mb-6">
         <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <h3 className="font-bold text-base mb-4" style={{ color: '#1F2A24' }}>CAMPUS BUILDINGS — HARVEST POTENTIAL</h3>
           {buildings.length === 0 ? (
             <div className="text-sm text-gray-400 text-center py-6">Loading buildings...</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  {['Building', 'Roof Area', 'Runoff Coeff.', 'Monthly Potential'].map(h => (
-                    <th key={h} className="text-left pb-3 font-medium" style={{ color: '#5B6B63' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {buildings.map((b: any, i: number) => (
-                  <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                    <td className="py-3 font-medium" style={{ color: '#1F2A24' }}>{b.name}</td>
-                    <td className="py-3" style={{ color: '#5B6B63' }}>{b.catchment_area_m2} m²</td>
-                    <td className="py-3" style={{ color: '#5B6B63' }}>{b.runoff_coefficient}</td>
-                    <td className="py-3 font-semibold" style={{ color: '#2196F3' }}>
-                      {Number(b.monthly_potential).toLocaleString('en-IN')} L/mo
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          ) : (() => {
+            const maxPotential = Math.max(...buildings.map((b: any) => Number(b.monthly_potential)));
+            return (
+              <div className="grid grid-cols-2 gap-3">
+                {buildings.map((b: any, i: number) => {
+                  const pct = Math.round((Number(b.monthly_potential) / maxPotential) * 100);
+                  const runoff = Number(b.runoff_coefficient);
+                  const runoffColor = runoff >= 0.85 ? '#1B5E20' : runoff >= 0.7 ? '#D97706' : '#DC2626';
+                  const runoffBg   = runoff >= 0.85 ? '#F1F8F0' : runoff >= 0.7 ? '#FDF3E3' : '#FEF2F2';
+                  return (
+                    <div key={i} className="rounded-xl border border-gray-100 p-4 hover:shadow-md transition-shadow" style={{ background: '#FAFAFA' }}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#E8F2FC' }}>
+                            <Building2 size={15} style={{ color: '#2196F3' }} />
+                          </div>
+                          <div className="font-bold text-sm leading-tight" style={{ color: '#1F2A24' }}>{b.name}</div>
+                        </div>
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ color: runoffColor, background: runoffBg }}>
+                          RC {runoff}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-4 mb-3 text-xs" style={{ color: '#5B6B63' }}>
+                        <span className="flex items-center gap-1"><Ruler size={11} /> {Number(b.catchment_area_m2).toLocaleString('en-IN')} m²</span>
+                        <span className="flex items-center gap-1"><Wind size={11} /> Runoff {runoff}</span>
+                      </div>
+
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-xs" style={{ color: '#5B6B63' }}>Monthly Potential</span>
+                        <span className="text-sm font-bold" style={{ color: '#2196F3' }}>
+                          {Number(b.monthly_potential).toLocaleString('en-IN')} L
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full" style={{ background: '#E8F2FC' }}>
+                        <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, background: '#2196F3' }} />
+                      </div>
+                      <div className="text-xs mt-1 text-right" style={{ color: '#5B6B63' }}>{pct}% of campus peak</div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
 
         <div className="w-72 bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
