@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Users, ShieldCheck, UserCheck, ShoppingBag, Recycle, Trash2, ChevronDown, Search, Loader2, Truck, FlaskConical, Gauge, X, Clock, CheckCircle2, Package } from 'lucide-react';
 import TopBar from '../../components/TopBar';
 import StatCard from '../../components/StatCard';
+import { useUser } from '@/lib/useUser';
 
 const ROLE_META: Record<string, { label: string; color: string; bg: string }> = {
   admin:     { label: 'Institution Admin', color: '#1B5E20', bg: '#F1F8F0' },
@@ -47,6 +48,8 @@ function RoleDropdown({ user, onUpdate }: { user: any; onUpdate: (id: number, ro
 }
 
 export default function AdminPanel() {
+  const currentUser = useUser();
+  const currentUserId = currentUser?.id;
   const [data, setData]         = useState<any>(null);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
@@ -106,6 +109,10 @@ export default function AdminPanel() {
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500); };
 
   const handleRoleUpdate = async (id: number, role: string) => {
+    if (id === currentUserId) {
+      showToast('⚠ You cannot change your own role');
+      return;
+    }
     setUpdating(id);
     await fetch('/api/admin/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, role }) });
     setUpdating(null);
@@ -114,6 +121,10 @@ export default function AdminPanel() {
   };
 
   const handleDelete = async (id: number, name: string) => {
+    if (id === currentUserId) {
+      showToast('⚠ You cannot delete your own account');
+      return;
+    }
     if (!confirm(`Remove user "${name}"? This cannot be undone.`)) return;
     setDeleting(id);
     await fetch('/api/admin/users', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
@@ -336,14 +347,18 @@ export default function AdminPanel() {
                     {new Date(u.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
                   <td className="py-3">
-                    <div className="flex items-center gap-3">
-                      <RoleDropdown user={u} onUpdate={handleRoleUpdate} />
-                      <button onClick={() => handleDelete(u.id, u.name)}
-                        disabled={deleting === u.id}
-                        className="text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors">
-                        {deleting === u.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-                      </button>
-                    </div>
+                    {u.id === currentUserId ? (
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ color: '#1B5E20', background: '#F1F8F0' }}>You</span>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <RoleDropdown user={u} onUpdate={handleRoleUpdate} />
+                        <button onClick={() => handleDelete(u.id, u.name)}
+                          disabled={deleting === u.id}
+                          className="text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors">
+                          {deleting === u.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
